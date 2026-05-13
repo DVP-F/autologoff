@@ -4,6 +4,7 @@
 #define _WIN32_WINNT 0x0600
 #include <windows.h>
 #include <wtsapi32.h>
+#include <string.h>
 #pragma comment(lib, "Advapi32.lib")
 #pragma comment(lib, "wtsapi32.lib")
 
@@ -23,12 +24,16 @@ void monitor_sessions(DWORD sessionId, size_t flag) {
 	DWORD idleBytes = 0;
 	if (WTSQuerySessionInformationW( WTS_CURRENT_SERVER_HANDLE, sessionId, WTSIdleTime, (LPWSTR*)&idleMs, &idleBytes )) {
 		ULONGLONG idleMinutes = idleMs / 60000ULL;
-		if (idleMinutes >= MAX_INACTVE_MINUTES) {
-			char command[64];
-			snprintf(command, sizeof(command), "logoff %lu", (unsigned long)sessionId);
-			if (flag == 0) {
+		char command[64];
+		snprintf(command, sizeof(command), "logoff %lu", (unsigned long)sessionId);
+		if (flag == 0) {
+			if (idleMinutes >= MAX_INACTVE_MINUTES) {
 				system(command);
-			} else printf(command);
+			}
+		}
+		else {
+			printf(idleMinutes);
+			system("query user");
 		}
 		WTSFreeMemory(&idleMs);
 	}
@@ -40,7 +45,7 @@ HANDLE gStopEvent = NULL;
 
 DWORD WINAPI WorkerThread(LPVOID param) {
 	while (1) {
-		PWTS_SESSION_INFO pSessions = NULL;
+		PWTS_SESSION_INFOW pSessions = NULL;
 		DWORD count = 0;
 		if (WTSEnumerateSessionsW( WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessions, &count )) {
 			for (DWORD i = 0; i < count; ++i) {
@@ -81,7 +86,7 @@ void WINAPI ServiceMain(DWORD argc, LPWSTR *argv) {
 	Sleep(INFINITE);
 }
 
-int main(int argc, char* argv[]) {
+int wmain(int argc, wchar_t* argv[]) {
 	if (argc == 1) {
 		SERVICE_TABLE_ENTRYW table[] = {
 			{ L"ALO", ServiceMain }, 
@@ -90,9 +95,9 @@ int main(int argc, char* argv[]) {
 		StartServiceCtrlDispatcherW(table);
 	}
 	else {
-		if (argv[1] == "-") {
+		if (wcscmp(argv[1], L"-") == 0) {
 			while (1) {
-				PWTS_SESSION_INFO pSessions = NULL;
+				PWTS_SESSION_INFOW pSessions = NULL;
 				DWORD count = 0;
 				if (WTSEnumerateSessionsW( WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessions, &count )) {
 					for (DWORD i = 0; i < count; ++i) {
