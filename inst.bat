@@ -38,6 +38,8 @@ REM requires admin to do this
 :gotPrivileges
  setlocal & cd /d %~dp0
  if '%1'=='ELEV' (del "%vbsGetPrivileges%" 1>nul 2>nul  &  shift /1)
+
 mkdir "C:\Program Files\ALO" >nul
 copy app.exe "C:\Program Files\ALO\app.exe" >nul
-sc create ALO binpath= "C:\Program Files\ALO\app.exe" start= auto >nul
+copy start.bat "C:\Program Files\ALO\start.bat" >nul
+::sc create ALO binpath= "C:\Program Files\ALO\start.bat" start= auto >nul

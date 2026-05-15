@@ -1,5 +1,5 @@
 // Build (MSVC):
-//   cl monitor_idle_sessions.c /link wtsapi32.lib user32.lib
+//   cl app.c /link advapi32.lib wtsapi32.lib user32.lib
 
 #define _WIN32_WINNT 0x0600
 #include <windows.h>
