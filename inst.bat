@@ -42,4 +42,4 @@ REM requires admin to do this
 mkdir "C:\Program Files\ALO" >nul
 copy app.exe "C:\Program Files\ALO\app.exe" >nul
 copy start.bat "C:\Program Files\ALO\start.bat" >nul
-::sc create ALO binpath= "C:\Program Files\ALO\start.bat" start= auto >nul
+sc create ALO binpath= "C:\Program Files\ALO\app.exe" start= auto >nul
