@@ -25,6 +25,7 @@ static HWND                  gHwnd = NULL;
 
 static void WINAPI ServiceMain(int argc, char *argv[]);
 static void WINAPI HandlerEx(DWORD ctrl, DWORD eventType, LPVOID eventData, LPVOID context);
+static DWORD ParseQuery(void);
 static DWORD FindGuestSessionId(void);
 static void ProcessPowerMessages(void);
 static void LogoffGuestSession(void);
@@ -179,6 +180,39 @@ static void ProcessPowerMessages(void) {
 	}
 }
 
+static DWORD ParseQuery(void) {
+    FILE *pipe;
+    char line[512];
+    pipe = _popen("query user", "r");
+    if (!pipe) {
+        return 1;
+    }
+    while (fgets(line, sizeof(line), pipe)) {
+        // Skip header
+        if (strstr(line, "USERNAME"))
+            continue;
+		// Only grab the active user
+		if (strstr(line, "Active")) {
+			// Tokenize line
+			char *token = strtok(line, " \t\r\n");
+			while (token) {
+				// Skip leading '>'
+				if (token[0] == '>')
+					token++;
+				char *end;
+				DWORD sessionId = (DWORD)strtoul(token, &end, 10);
+				// If fully numeric, we found the ID
+				if (*token != '\0' && *end == '\0') {
+					return sessionId;
+				}
+				token = strtok(NULL, " \t\r\n");
+			}
+		}
+    }
+    _pclose(pipe);
+	return (DWORD)-1;
+}
+
 static DWORD FindGuestSessionId(void) {
 	PWTS_SESSION_INFOA pSessions = NULL;
 	DWORD count = 0;
@@ -220,8 +254,11 @@ static DWORD FindGuestSessionId(void) {
 static void LogoffGuestSession(void) {
 	DWORD sessionId = FindGuestSessionId();
 	if (sessionId == (DWORD)-1) {
-		fprintf(stderr, "Guest session not found\n");
-		return;
+		sessionId == ParseQuery();
+		if (sessionId == (DWORD)-1) {
+			fprintf(stderr, "Guest session not found\n");
+			return;
+		}
 	}
 	if (!WTSLogoffSession(
 			WTS_CURRENT_SERVER_HANDLE,
