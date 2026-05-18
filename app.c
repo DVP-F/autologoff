@@ -26,7 +26,6 @@ static HWND                  gHwnd = NULL;
 static void WINAPI ServiceMain(int argc, char *argv[]);
 static void WINAPI HandlerEx(DWORD ctrl, DWORD eventType, LPVOID eventData, LPVOID context);
 static DWORD ParseQuery(void);
-static DWORD FindGuestSessionId(void);
 static void ProcessPowerMessages(void);
 static void LogoffGuestSession(void);
 static BOOL InitPowerNotification(void);
@@ -109,7 +108,7 @@ static void WINAPI HandlerEx(DWORD ctrl, DWORD eventType, LPVOID eventData, LPVO
 		if (eventType == WTS_SESSION_LOCK) {
 			DWORD sessionId = *(DWORD *)eventData;  // lParam in WM_WTSSESSION_CHANGE
 			(void)sessionId; // we log off the known guest session anyway
-			fprintf(stdout, "Session locked (WTS_SESSION_LOCK), logging off guest session %d\n", FindGuestSessionId());
+			fprintf(stdout, "Session locked (WTS_SESSION_LOCK), logging off guest session %d\n", ParseQuery());
 			LogoffGuestSession();
 		}
 	}
@@ -151,8 +150,7 @@ static void ProcessPowerMessages(void) {
 			DWORD lidState = *((DWORD *)pbs->Data);
 			// 0 = closed, 1 = open
 			if (lidState == 0) {
-				fprintf(stdout, "Lid closed (GUID_LIDSWITCH_STATE_CHANGE), logging off guest session %d\n",
-						FindGuestSessionId());
+				fprintf(stdout, "Lid closed (GUID_LIDSWITCH_STATE_CHANGE), logging off guest session %d\n", ParseQuery());
 				LogoffGuestSession();
 			}
 		}
