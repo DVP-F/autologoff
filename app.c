@@ -49,11 +49,7 @@ int main(void) {
 static void WINAPI ServiceMain(int argc, char *argv[]) {
 	(void)argc;
 	(void)argv;
-	gSvcStatusHandle = RegisterServiceCtrlHandlerExA(
-		SERVICE_NAME,
-		(LPHANDLER_FUNCTION_EX)HandlerEx,
-		NULL
-	);
+	gSvcStatusHandle = RegisterServiceCtrlHandlerExA(SERVICE_NAME, (LPHANDLER_FUNCTION_EX)HandlerEx, NULL );
 	if (!gSvcStatusHandle) {
 		fprintf(stderr, "RegisterServiceCtrlHandlerEx failed: %lu\n", GetLastError());
 		return;
@@ -81,17 +77,7 @@ static void WINAPI ServiceMain(int argc, char *argv[]) {
 		return;
 	}
 	// Message-only window
-	gHwnd = CreateWindowExA(
-		0,
-		"GuestLidLogoffNotifyWnd",
-		"",
-		0,
-		0, 0, 0, 0,
-		HWND_MESSAGE,
-		NULL,
-		wc.hInstance,
-		NULL
-	);
+	gHwnd = CreateWindowExA( 0, "GuestLidLogoffNotifyWnd", "", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL );
 	if (!gHwnd) {
 		fprintf(stderr, "CreateWindowEx for power notify failed: %lu\n", GetLastError());
 		return;
@@ -123,8 +109,7 @@ static void WINAPI HandlerEx(DWORD ctrl, DWORD eventType, LPVOID eventData, LPVO
 		if (eventType == WTS_SESSION_LOCK) {
 			DWORD sessionId = *(DWORD *)eventData;  // lParam in WM_WTSSESSION_CHANGE
 			(void)sessionId; // we log off the known guest session anyway
-			fprintf(stdout, "Session locked (WTS_SESSION_LOCK), logging off guest session %d\n",
-					FindGuestSessionId());
+			fprintf(stdout, "Session locked (WTS_SESSION_LOCK), logging off guest session %d\n", FindGuestSessionId());
 			LogoffGuestSession();
 		}
 	}
@@ -133,11 +118,7 @@ static void WINAPI HandlerEx(DWORD ctrl, DWORD eventType, LPVOID eventData, LPVO
 // Initialize power notification for lid switch
 static BOOL InitPowerNotification(void) {
 	// Register for power setting notifications via a message window
-	gPowerNotify = RegisterPowerSettingNotification(
-		gHwnd,
-		&GUID_LIDSWITCH_STATE_CHANGE,
-		DEVICE_NOTIFY_WINDOW_HANDLE
-	);
+	gPowerNotify = RegisterPowerSettingNotification( gHwnd, &GUID_LIDSWITCH_STATE_CHANGE, DEVICE_NOTIFY_WINDOW_HANDLE );
 	if (!gPowerNotify) {
 		fprintf(stderr, "RegisterPowerSettingNotification failed: %lu\n", GetLastError());
 		return FALSE;
@@ -213,63 +194,15 @@ static DWORD ParseQuery(void) {
 	return (DWORD)-1;
 }
 
-static DWORD FindGuestSessionId(void) {
-	PWTS_SESSION_INFOA pSessions = NULL;
-	DWORD count = 0;
-	if (!WTSEnumerateSessionsA(
-			WTS_CURRENT_SERVER_HANDLE,
-			0,
-			1,
-			&pSessions,
-			&count)) {
-		fprintf(stderr, "WTSEnumerateSessions failed: %lu\n", GetLastError());
-		return (DWORD)-1;
-	}
-	DWORD result = (DWORD)-1;
-	for (DWORD i = 0; i < count; ++i) {
-		LPSTR pUser = NULL;
-		DWORD bytes = 0;
-		if (WTSQuerySessionInformationA(
-				WTS_CURRENT_SERVER_HANDLE,
-				pSessions[i].SessionId,
-				WTSUserName,
-				&pUser,
-				&bytes)) {
-			if (pUser && _stricmp(pUser, "Guest") == 0) {
-				result = pSessions[i].SessionId;
-				fprintf(stdout,
-						"Found Guest session: %lu\n",
-						result);
-				WTSFreeMemory(pUser);
-				break;
-			}
-			if (pUser)
-				WTSFreeMemory(pUser);
-		}
-	}
-	WTSFreeMemory(pSessions);
-	return result;
-}
-
 static void LogoffGuestSession(void) {
-	DWORD sessionId = FindGuestSessionId();
+	DWORD sessionId = ParseQuery();
 	if (sessionId == (DWORD)-1) {
-		sessionId == ParseQuery();
-		if (sessionId == (DWORD)-1) {
-			fprintf(stderr, "Guest session not found\n");
-			return;
-		}
-	}
-	if (!WTSLogoffSession(
-			WTS_CURRENT_SERVER_HANDLE,
-			sessionId,
-			FALSE)) {
-		fprintf(stderr,
-				"WTSLogoffSession failed: %lu\n",
-				GetLastError());
+		fprintf(stderr, "Guest session not found\n");
 		return;
 	}
-	fprintf(stdout,
-			"Logged off Guest session %lu\n",
-			sessionId);
+	if (!WTSLogoffSession(WTS_CURRENT_SERVER_HANDLE, sessionId, FALSE)) {
+		fprintf(stderr, "WTSLogoffSession failed: %lu\n", GetLastError());
+		return;
+	}
+	fprintf(stdout, "Logged off Guest session %lu\n", sessionId);
 }
